@@ -4,7 +4,7 @@
 // @version      20.0.0
 // @description  アップロードAPIをeasy_authからuploadに変更
 // @author       You
-// @match        https://note.gosyujin.com/pdftoscrapbox/*
+// @match        https://aretoky.github.io/pdftoscrapbox/*
 // @grant        GM_xmlhttpRequest
 // @grant        GM_download
 // ==/UserScript==
