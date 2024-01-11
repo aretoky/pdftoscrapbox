@@ -91,7 +91,7 @@ const canvasToBlob = (dataUrl) => {
     // レンダリング後、Gyazoにアップロード
     const renderAndUpload = async (page, name) => {
         // see: https://www.linkcom.com/blog/2020/05/pdfjs-resolution.html
-        const PRINT_UNITS = 600 / 72.0 * 0.5;
+        const PRINT_UNITS = 600 / 72.0;
         const MAXIMUM_CANVAS_SIZE = 32767;
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
