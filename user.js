@@ -92,7 +92,7 @@ const canvasToBlob = (dataUrl) => {
     const renderAndUpload = async (page, name) => {
         // see: https://www.linkcom.com/blog/2020/05/pdfjs-resolution.html
         const PRINT_UNITS = 600 / 72.0;
-        const MAXIMUM_CANVAS_SIZE = 32767;
+        const MAXIMUM_CANVAS_SIZE = 3276;
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
         const transform = [PRINT_UNITS, 0, 0, PRINT_UNITS, 0, 0];
