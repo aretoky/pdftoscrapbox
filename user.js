@@ -168,7 +168,7 @@ const canvasToBlob = (dataUrl) => {
         const urls = gyazoUrlList.map(url => `[[${url}]]`);
         // 1行目=タイトルをファイル名にしている
         urls.unshift(file.name.normalize());
-        window.open(`https://scrapbox.io/${document.querySelector('input').value}/new?body=${encodeURIComponent(urls.join("\n"))}`);
+        window.open(`https://scrapbox.io/${document.querySelector('input').value}/new?body=${encodeURIComponent(urls.join("\n\n"))}`);
 
         //　Gyazo URL一覧のファイルダウンロード用
         const plainUrls = gyazoUrlList.map(url => `${url}`);
