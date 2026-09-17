@@ -63,7 +63,7 @@ const GM_save = (title, text) => {
     const blob = new Blob([ text.join('\n') ], { "type" : "text/plain" });
     const url = URL.createObjectURL(blob);
     const args = { url: url, name: `${title}.txt`, saveAs: false };
-    GM_download(args);
+    //GM_download(args);
 }
 
 const readPdf = (file) => {
@@ -131,7 +131,8 @@ const stampRunId = (context, canvas, runId) => {
         stampRunId(context, canvas, runId);
 
         const blob = await canvasToBlob(canvas.toDataURL('image/jpeg'));
-        const response = await GM_post(blob, location.href, name);
+        const referer = `https://scrapbox.io/${document.querySelector('input').value}/search/page?q=${encodeURIComponent(name)}`;
+        const response = await GM_post(blob, referer, name);
         const data = await response.response;
         let json;
         try {
