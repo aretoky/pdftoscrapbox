@@ -93,9 +93,20 @@ const canvasToBlob = (dataUrl) => {
     return blob;
 }
 
+// Gyazo は同一バイト列の画像に同じ image_id を返して新規キャプチャを作らない（過去に削除した画像の ID が返ることもある）。
+// 実行ごとに画像が一意になるよう、最下行に実行 ID 由来の位置で目立たない 4x4 の点を打つ。
+const stampRunId = (context, canvas, runId) => {
+    const x = runId % Math.max(1, canvas.width - 4);
+    const y = canvas.height - 4;
+    const px = context.getImageData(x, y, 1, 1).data;
+    const shift = (c) => (c > 127 ? c - 16 : c + 16);
+    context.fillStyle = `rgb(${shift(px[0])}, ${shift(px[1])}, ${shift(px[2])})`;
+    context.fillRect(x, y, 4, 4);
+};
+
 (function() {
     // レンダリング後、Gyazoにアップロード
-    const renderAndUpload = async (page, name) => {
+    const renderAndUpload = async (page, name, runId) => {
         // see: https://www.linkcom.com/blog/2020/05/pdfjs-resolution.html
         const PRINT_UNITS = 600 / 72.0;
         const MAXIMUM_CANVAS_SIZE = 32767;
@@ -117,6 +128,7 @@ const canvasToBlob = (dataUrl) => {
         canvas.style.width = Math.floor(viewport.width * PRINT_UNITS) + "px";
         canvas.style.height = Math.floor(viewport.height * PRINT_UNITS) + "px";
         await page.render(renderContext);
+        stampRunId(context, canvas, runId);
 
         const blob = await canvasToBlob(canvas.toDataURL('image/jpeg'));
         const response = await GM_post(blob, location.href, name);
@@ -142,6 +154,7 @@ const canvasToBlob = (dataUrl) => {
         const pdf = await PDFJS.getDocument(obj);
         let gyazoUrlList = [];
         let currentPageIndex = 1;
+        const runId = Date.now();
         debug({filespan: '初期化', page_per: '初期化', progress_log: '[]', error_log: ''});
         debug({console: `${file.name}: ${pdf.numPages}pages`, filespan: file.name, page_per: `${currentPageIndex} / ${pdf.numPages} (${new Date().toLocaleString()})`, progress_log: `[${'|'.repeat(currentPageIndex)}${'-'.repeat(pdf.numPages - currentPageIndex)}]`});
 
@@ -151,7 +164,7 @@ const canvasToBlob = (dataUrl) => {
 
             for (let retry = 1; retry <= MAX_RETRY; retry++) {
                 try {
-                    gyazo = await renderAndUpload(page, file.name);
+                    gyazo = await renderAndUpload(page, file.name, runId);
                 } catch (error) {
                     debug({console: `error and ${retry} retry: ${error}`, error_log: `error and ${retry} retry: ${error}`});
                     await new Promise(r => setTimeout(r, 2000 * retry));
