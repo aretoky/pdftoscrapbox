@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         PDF to Scrapbox user.js
 // @namespace    http://tampermonkey.net/
-// @version      20.0.0
-// @description  アップロードAPIをeasy_authからuploadに変更
+// @version      20.1.0
+// @description  Gyazo のエラー応答で止まらないようにリトライとログを修正
 // @author       You
 // @match        https://aretoky.github.io/pdftoscrapbox/*
 // @grant        GM_xmlhttpRequest
@@ -23,10 +23,10 @@ const preview = document.querySelector('span.preview');
 
 const debug = (d = {console: null, filespan: null, page_per: null, progress_log: null, error_log: null, preview: null}) => {
     if (d.console) console.log(d.console);
-    if (d.filespan) filespan.textContent = d.filespan;
-    if (d.page_per) page_per.textContent = d.page_per;
-    if (d.progress_log) progress_log.textContent = d.progress_log;
-    if (d.error_log) error_log.textContent += `${d.error_log}\r\n`;
+    if (d.filespan && filespan) filespan.textContent = d.filespan;
+    if (d.page_per && page_per) page_per.textContent = d.page_per;
+    if (d.progress_log && progress_log) progress_log.textContent = d.progress_log;
+    if (d.error_log && error_log) error_log.textContent += `${d.error_log}\r\n`;
 }
 
 const GM_post = (blob, referer, title) => {
@@ -46,6 +46,12 @@ const GM_post = (blob, referer, title) => {
             data: data,
             onload(res) {
                 resolve(res);
+            },
+            onerror(res) {
+                reject(new Error(`GM_xmlhttpRequest error (HTTP ${res.status})`));
+            },
+            ontimeout() {
+                reject(new Error('GM_xmlhttpRequest timeout'));
             },
             withCredentials: true
         });
@@ -115,7 +121,16 @@ const canvasToBlob = (dataUrl) => {
         const blob = await canvasToBlob(canvas.toDataURL('image/jpeg'));
         const response = await GM_post(blob, location.href, name);
         const data = await response.response;
-        return JSON.parse(data).permalink_url;
+        let json;
+        try {
+            json = JSON.parse(data);
+        } catch (e) {
+            throw new Error(`Gyazo returned non-JSON (HTTP ${response.status}): ${String(data).slice(0, 120)}`);
+        }
+        if (!json.permalink_url) {
+            throw new Error(`Gyazo returned no permalink_url (HTTP ${response.status}): ${String(data).slice(0, 120)}`);
+        }
+        return json.permalink_url;
     }
 
     // ファイルを選択時、PDF読み込み開始
@@ -139,6 +154,7 @@ const canvasToBlob = (dataUrl) => {
                     gyazo = await renderAndUpload(page, file.name);
                 } catch (error) {
                     debug({console: `error and ${retry} retry: ${error}`, error_log: `error and ${retry} retry: ${error}`});
+                    await new Promise(r => setTimeout(r, 2000 * retry));
                 }
                 if (gyazo && gyazo.includes('/api/upload/')) {
                     // GyazoのURLは返ってきたが、レスポンスが想定したURLと違う場合ループを継続してみる(なぜか/api/upload/という文字列が入ってくる時がある)
@@ -148,7 +164,10 @@ const canvasToBlob = (dataUrl) => {
                     break;
                 }
             }
-            if (!gyazo) return;
+            if (!gyazo) {
+                debug({console: `page ${currentPageIndex}: ${MAX_RETRY}回失敗したので中断`, error_log: `page ${currentPageIndex}: ${MAX_RETRY}回失敗したので中断`});
+                return;
+            }
 
             if(gyazoUrlList.includes(gyazo)){
                 // 同じ画像が既にgyazoUrlListにpushされている場合、そのページは飛ばす
